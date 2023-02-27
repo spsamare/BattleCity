@@ -53,6 +53,7 @@ image_library, \
     enemy2_sprite_start, enemy2_sprite_end, \
     bullet_sprite_start, bullet_sprite_end, \
     shield_sprite_start, shield_sprite_end, \
+    shine_sprite_start, shine_sprite_end, \
     blast_sprite_start, blast_sprite_end, \
     obstacle_brick_sprite_start, obstacle_brick_sprite_end, \
     obstacle_steel_sprite, obstacle_forest_sprite, obstacle_ice_sprite, \
@@ -61,7 +62,8 @@ image_library, \
     reward_shield_sprite, reward_freeze_sprite, reward_fortify_sprite, \
     reward_upgrade_sprite, reward_blast_sprite, reward_life_sprite, reward_empty_sprite , \
     stat_pallet_sprite, stat_enemy_sprite, \
-    stat_num_sprite_start, stat_num_sprite_end = \
+    stat_num_sprite_start, stat_num_sprite_end, \
+    display_first_start, display_second_start, display_end = \
     load_sprites(fullpath='res/tank_res_high.png',
                  color_key=COLORS["key"],
                  block_size=BLOCK_SIZE,

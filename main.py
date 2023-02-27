@@ -67,6 +67,7 @@ if __name__ == '__main__':
     this_round = Round()
     bird.round = this_round
     obstacle_group.add(bird)
+    countdown_start = TIMERS['enemy_spawn_delay']
 
     # add obstacles
     all_sprites.add(obstacle_group)
@@ -130,6 +131,7 @@ if __name__ == '__main__':
 
     temp_count = 0
     stat_board = StatBoard(player1=agent1, player2=agent2, enemy_generator=enemy_generator)
+    status_display = StatusDisplay()
     # stat_board.enemy_generator = enemy_generator.enemies_remaining
     while not done:
         """
@@ -150,10 +152,18 @@ if __name__ == '__main__':
             if event.type == pg.QUIT:
                 done = True
 
-        if not this_round.state:
+        if enemy_generator.enemies_remaining == 0 and len(enemy_group) == 0:
+            this_round.completed()
+
+        if agent1.lives + agent2.lives == 0:
+            this_round.failed()
+
+        if not this_round.finished and countdown_start == 0:
             pressed_keys = pg.key.get_pressed()
             agent1.control(pressed_keys)
             agent2.control(pressed_keys)
+        else:
+            countdown_start = np.maximum(0, countdown_start - 1)
 
         all_sprites.update()
         all_rewards.update()
@@ -171,6 +181,9 @@ if __name__ == '__main__':
         forest_group.draw(SCREEN)
         all_rewards.draw(SCREEN)
         stat_board.draw()
+        #
+        if countdown_start > 0 or this_round.finished:
+            status_display.draw(game_state=this_round.state)
 
         # draw border
         """

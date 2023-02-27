@@ -116,10 +116,16 @@ def load_sprites(block_size, resolution_scale, fullpath='res/tank_res_high.png',
     shield_sprite_start = bullet_sprite_end
     shield_sprite_end = shield_sprite_start + 2
 
+    shine_sprite_list = (
+        (512, 192, 32, 32), (544, 192, 32, 32), (576, 192, 32, 32), (608, 192, 32, 32)
+    )
+    shine_sprite_start = shield_sprite_end
+    shine_sprite_end = shine_sprite_start + 4
+
     blast_sprite_list = (
         (608, 256, 64, 64), (672, 256, 64, 64)
     )
-    blast_sprite_start = shield_sprite_end
+    blast_sprite_start = shine_sprite_end
     blast_sprite_end = blast_sprite_start + 2
 
     obstacle_start_val_x = 16 * 32
@@ -146,9 +152,9 @@ def load_sprites(block_size, resolution_scale, fullpath='res/tank_res_high.png',
     bird_sprite_end = bird_sprite_start + 2
 
     reward_sprite_list = (
-        (512, 222, 32, 32), (544, 222, 32, 32), (576, 222, 32, 32),
-        (608, 222, 32, 32), (640, 222, 32, 32), (672, 222, 32, 32),
-        (704, 222, 32, 32)
+        (512, 224, 32, 32), (544, 224, 32, 32), (576, 224, 32, 32),
+        (608, 224, 32, 32), (640, 224, 32, 32), (672, 224, 32, 32),
+        (704, 224, 32, 32)
     )
     reward_shield_sprite = bird_sprite_end
     reward_freeze_sprite = reward_shield_sprite + 1
@@ -168,6 +174,15 @@ def load_sprites(block_size, resolution_scale, fullpath='res/tank_res_high.png',
     stat_num_sprite_start = stat_enemy_sprite + 1
     stat_num_sprite_end = stat_num_sprite_start + 10
 
+    display_sprite_list = (
+        (656, 352, 80, 16), (576, 352, 80, 16), (576, 368, 80, 16),  # stage, pause, game
+        (576, 384, 16, 16), (592, 384, 16, 16), (608, 384, 16, 16), (624, 384, 16, 16),  # o, v, e, r
+        (704, 400, 16, 16), (720, 400, 16, 16)  # o, k
+    )
+    display_first_start = stat_num_sprite_end
+    display_second_start = display_first_start + 3
+    display_end = display_second_start + 6
+
     all_sprite_list = sprite_rescale(
         player1_sprite_list +
         player2_sprite_list +
@@ -175,11 +190,13 @@ def load_sprites(block_size, resolution_scale, fullpath='res/tank_res_high.png',
         enemy2_sprite_list +
         bullet_sprite_list +
         shield_sprite_list +
+        shine_sprite_list +
         blast_sprite_list +
         obstacle_sprite_list +
         bird_sprite_list +
         reward_sprite_list +
-        stat_sprite_list,
+        stat_sprite_list +
+        display_sprite_list,
         new_scale=resolution_scale
     )
 
@@ -197,6 +214,7 @@ def load_sprites(block_size, resolution_scale, fullpath='res/tank_res_high.png',
         enemy2_sprite_start, enemy2_sprite_end, \
         bullet_sprite_start, bullet_sprite_end, \
         shield_sprite_start, shield_sprite_end, \
+        shine_sprite_start, shine_sprite_end, \
         blast_sprite_start, blast_sprite_end, \
         obstacle_brick_sprite_start, obstacle_brick_sprite_end, \
         obstacle_steel_sprite, obstacle_forest_sprite, obstacle_ice_sprite, \
@@ -205,7 +223,8 @@ def load_sprites(block_size, resolution_scale, fullpath='res/tank_res_high.png',
         reward_shield_sprite, reward_freeze_sprite, reward_fortify_sprite, \
         reward_upgrade_sprite, reward_blast_sprite, reward_life_sprite, reward_empty_sprite, \
         stat_pallet_sprite, stat_enemy_sprite, \
-        stat_num_sprite_start, stat_num_sprite_end
+        stat_num_sprite_start, stat_num_sprite_end, \
+        display_first_start, display_second_start, display_end
 
 
 def sprite_rescale(sprite_list, new_scale):

@@ -4,22 +4,22 @@ import numpy as np
 
 TIMERS = {
     'player_immortal': 5 * FPS,
-    'enemy_immortal': 0 * FPS,
+    'enemy_immortal': 2 * FPS,
     'reward_immortal': 10 * FPS,
     'freeze': 10 * FPS,
-    'reward_duration': 10 * FPS,
+    'reward_duration': 15 * FPS,
     'blink': FPS // 2,
     'enemy_respawn_normal': 10 * FPS,
-    'enemy_respawn_urgent': 3 * FPS
+    'enemy_respawn_urgent': 3 * FPS,
+    'enemy_spawn_delay': 2 * FPS
 }
 
 SPEED = {
     'move': BLOCK_SIZE / 2,
     'move_delay': 10,
-    'bullet': BLOCK_SIZE,
+    'bullet': 2 * BLOCK_SIZE,
     'bullet_delay': 2 * FPS
 }
-
 
 STATES = {
     'ongoing': 0,
@@ -149,7 +149,7 @@ class Tank(pg.sprite.Sprite):
             self.level = min(self.level + 1, 3)
         else:
             self.level = max(self.level - 1, 0)
-        print(self.level)
+        # print(self.level)
         self.image = self.images[self.level * 8 + self.direction]
         if self.level == 3:
             self.shoot_count_max = SPEED['bullet_delay'] // 2
@@ -220,7 +220,8 @@ class Tank(pg.sprite.Sprite):
 
 
 class Enemy(Tank):
-    def __init__(self, pos, game_area_, images=image_library[enemy1_sprite_start:enemy1_sprite_end], level=0):
+    def __init__(self, pos, game_area_, images=image_library[enemy1_sprite_start:enemy1_sprite_end],
+                 level=0):
         super().__init__(pos, game_area_, images)
         #
         self.direction = DIRECTION["S"]
@@ -234,6 +235,42 @@ class Enemy(Tank):
         ]
         self.inertia_state = 0
         self.shoot_probability = .5
+        #
+        # if shine is True:
+        #    self.start_countdown = TIMERS['enemy_spawn_delay']
+        #    self.groups()[0].add(Shine(self, self.game_area))
+
+    def update(self):
+        if self.is_alive:
+            if self.hit_by is None or self.immortal is True:
+                if self.shoot_count > 0:
+                    self.shoot_count = (self.shoot_count + 1) % self.shoot_count_max
+                if self.level == 3 and self.shoot_count == 10:
+                    bullet_ = Bullet(self, self.game_area)
+                    self.groups()[0].add(bullet_)
+                    # self.obstacles.add(bullet_)
+                #
+                if self.immortal_timer > 0:
+                    self.immortal = True
+                    self.hit_by = None
+                    if not self.has_shield:
+                        self.groups()[0].add(Shine(self, self.game_area))
+                        self.has_shield = True
+                    self.immortal_timer -= 1
+                    self.image = self.images[-1]
+                else:
+                    self.immortal = False
+                    self.has_shield = False
+                    self.automate()
+            else:
+                self.blast()
+        else:
+            if self.lives > 0:
+                self.respawn_counter -= 1
+                if self.respawn_counter == 0:
+                    self.spawn()
+            else:
+                self.kill()
 
     def automate(self):
         if self.frozen is True:
@@ -312,7 +349,7 @@ class EnemySpecial(Enemy):
         this_choice = np.random.choice(range(6), 1, p=REWARD_PROBABILITY)[0]
         this_x = np.random.randint(0, 13, 1)[0]
         this_y = np.random.randint(1, 12, 1)[0]
-        print(this_choice, this_x, this_y)
+        # print(this_choice, this_x, this_y)
         if this_choice == 0:
             self.rewards.add(RewardShield(pos=(2 * this_x * BLOCK_SIZE, 2 * this_y * BLOCK_SIZE)))
         elif this_choice == 1:
@@ -334,7 +371,7 @@ class Player(Tank):
         self.direction = DIRECTION["N"]
         self.image = images[self.direction]
         #
-        self.lives = 3
+        self.lives = 2
         self.immortal_timer = TIMERS['player_immortal']
         #
         self.is_player = True
@@ -592,6 +629,30 @@ class Shield(pg.sprite.Sprite):
             self.kill()
 
 
+class Shine(pg.sprite.Sprite):
+    def __init__(self, owner, game_area_, images=image_library[shine_sprite_start:shine_sprite_end]):
+        super().__init__()
+        self.images = images
+        self.image_count = 0
+        self.image = self.images[self.image_count]
+        self.rect = self.image.get_rect()
+        self.owner = owner
+        self.rect.center = owner.rect.center
+        self.game_area = game_area_
+        self.timer = TIMERS['enemy_spawn_delay']
+        self.order = [0, 1, 2, 3, 2, 1]
+
+    def update(self):
+        if self.timer > 0:
+            self.rect.center = self.owner.rect.center
+            if (12 * self.timer) % FPS == 0:
+                self.image_count = (self.image_count + 1) % 6
+            self.image = self.images[self.order[self.image_count]]
+            self.timer -= 1
+        else:
+            self.kill()
+
+
 class Blast(pg.sprite.Sprite):
     def __init__(self, owner, game_area_, images=image_library[blast_sprite_start:blast_sprite_end]):
         super().__init__()
@@ -773,17 +834,58 @@ class EnemyGenerator:
         if self.respawn_counter < 1:
             if location is None:
                 location = np.random.randint(3)
-            enemy = EnemySpecial(pos=self.spawn_locations[location], game_area_=self.game_area, level=level) \
-                if is_special else Enemy(pos=self.spawn_locations[location], game_area_=self.game_area, level=level)
-            self.all_sprites.add(enemy)
-            self.enemy_group.add(enemy)
-            enemy.partners = self.enemy_group
-            enemy.opponents = self.player_group
-            enemy.obstacles = self.obstacle_group  # enemy.obstacles.add(obstacle_group)
-            enemy.bullet_exceptions.add(self.ocean_group)
-            enemy.bullet_list = self.bullet_list
-            enemy.rewards = self.rewards
-            #
-            self.enemies_remaining -= 1
-            self.respawn_counter = TIMERS['enemy_respawn_normal']
+            placeholder = pg.sprite.Sprite()
+            placeholder.rect = pg.Rect(self.spawn_locations[location], (2 * BLOCK_SIZE, 2 * BLOCK_SIZE))
+            if pg.sprite.spritecollideany(placeholder, self.enemy_group) is None and \
+                    pg.sprite.spritecollideany(placeholder, self.player_group) is None:
+                enemy = EnemySpecial(pos=self.spawn_locations[location], game_area_=self.game_area, level=level) \
+                    if is_special else Enemy(pos=self.spawn_locations[location], game_area_=self.game_area, level=level)
+                self.all_sprites.add(enemy)
+                self.enemy_group.add(enemy)
+                enemy.partners = self.enemy_group
+                enemy.opponents = self.player_group
+                enemy.obstacles = self.obstacle_group  # enemy.obstacles.add(obstacle_group)
+                enemy.bullet_exceptions.add(self.ocean_group)
+                enemy.bullet_list = self.bullet_list
+                enemy.rewards = self.rewards
+                #
+                self.enemies_remaining -= 1
+                self.respawn_counter = TIMERS['enemy_respawn_normal']
+            else:
+                self.respawn_counter += FPS // 2
+            placeholder.kill()
+
+
+class StatusDisplay:
+    def __init__(self):
+        self.text_first_images = image_library[display_first_start:display_second_start]
+        self.text_second_images = image_library[display_second_start:display_end]
+        self.num_images = image_library[stat_num_sprite_start:stat_num_sprite_end]
+
+        self.back_pallet = pg.Rect((8 * BLOCK_SIZE, 12 * BLOCK_SIZE), (11 * BLOCK_SIZE, 3 * BLOCK_SIZE))
+        self.first_pallet = self.text_first_images[0].get_rect(topleft=(9 * BLOCK_SIZE, 13 * BLOCK_SIZE))
+        self.second_pallet = [
+            self.text_second_images[0].get_rect(topleft=(14 * BLOCK_SIZE, 13 * BLOCK_SIZE)),
+            self.text_second_images[0].get_rect(topleft=(15 * BLOCK_SIZE, 13 * BLOCK_SIZE)),
+            self.text_second_images[0].get_rect(topleft=(16 * BLOCK_SIZE, 13 * BLOCK_SIZE)),
+            self.text_second_images[0].get_rect(topleft=(17 * BLOCK_SIZE, 13 * BLOCK_SIZE))
+        ]
+
+    def draw(self, game_state, stage='000'):
+        pg.draw.rect(SCREEN, COLORS['static'], self.back_pallet)
+        if game_state == STATES['ongoing']:
+            # print('test')
+            SCREEN.blit(self.text_first_images[0], self.first_pallet)
+            for i in range(3):
+                SCREEN.blit(self.num_images[int(stage[i])], self.second_pallet[i+1])
+        elif game_state == STATES['win']:
+            SCREEN.blit(self.text_first_images[0], self.first_pallet)
+            for i in range(2):
+                SCREEN.blit(self.text_second_images[int(i-2)], self.second_pallet[i + 2])
+        elif game_state == STATES['loose']:
+            SCREEN.blit(self.text_first_images[-1], self.first_pallet)
+            for i in range(4):
+                SCREEN.blit(self.text_second_images[i], self.second_pallet[i])
+        else:
+            pass
 
