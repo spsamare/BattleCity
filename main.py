@@ -1,7 +1,7 @@
 from objectClasses import *
 from init import *
+from map_builder import MapBuilder
 import numpy as np
-
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -36,36 +36,46 @@ if __name__ == '__main__':
     """
     # Add environment elements
     ocean_group = pg.sprite.Group()
+    brick_group = pg.sprite.Group()
+    forest_group = pg.sprite.Group()
+    ice_group = pg.sprite.Group()
+    steel_group = pg.sprite.Group()
+    map_generator = MapBuilder(oceans=ocean_group, bricks=brick_group, forests=forest_group,
+                               ice=ice_group, steel=steel_group)
+    map_generator.get_map(map_num=1)
+    obstacle_group.add(ocean_group)
+    obstacle_group.add(brick_group)
+    obstacle_group.add(steel_group)
+    #
+    """
     for o in range(11):
         ocean_group.add(
             Ocean((2 * (o + 1) * BLOCK_SIZE, 2 * 7 * BLOCK_SIZE))
         )
-    obstacle_group.add(ocean_group)
-
-    forest_group = pg.sprite.Group()
+    """
+    """
     for o in range(11):
         forest_group.add(
             Forest((2 * (o + 1) * BLOCK_SIZE, 2 * 3 * BLOCK_SIZE))
         )
-
-    ice_group = pg.sprite.Group()
+    """
     """
     for o in range(11):
         ice_group.add(
             Ice((2 * (o + 1) * BLOCK_SIZE, 2 * 5 * BLOCK_SIZE))
         )
     """
-
-    steel_group = pg.sprite.Group()
+    """
     for o in range(6):
         steel_group.add(
             Steel(((o + 10) * BLOCK_SIZE, 2 * 11 * BLOCK_SIZE))
         )
-    obstacle_group.add(steel_group)
-
+    """
     bird = Bird(pos=(2 * 6 * BLOCK_SIZE, 2 * 12 * BLOCK_SIZE))
     this_round = Round()
     bird.round = this_round
+    for this_obstacle in pg.sprite.spritecollide(bird, obstacle_group, dokill=True):
+        this_obstacle.kill()
     obstacle_group.add(bird)
     countdown_start = TIMERS['enemy_spawn_delay']
 
@@ -105,8 +115,8 @@ if __name__ == '__main__':
 
     # Tests
     # all_rewards.add(RewardBlast(pos=(4 * BLOCK_SIZE, 24 * BLOCK_SIZE)))
-    all_rewards.add(RewardUpgrade(pos=(4 * BLOCK_SIZE, 22 * BLOCK_SIZE)))
-    all_rewards.add(RewardUpgrade(pos=(4 * BLOCK_SIZE, 20 * BLOCK_SIZE)))
+    # all_rewards.add(RewardUpgrade(pos=(4 * BLOCK_SIZE, 22 * BLOCK_SIZE)))
+    # all_rewards.add(RewardFortify(pos=(4 * BLOCK_SIZE, 20 * BLOCK_SIZE)))
 
     """
     enemy1 = Enemy(pos=(0 * BLOCK_SIZE, 0 * BLOCK_SIZE), game_area_=game_area)
@@ -132,7 +142,14 @@ if __name__ == '__main__':
     temp_count = 0
     stat_board = StatBoard(player1=agent1, player2=agent2, enemy_generator=enemy_generator)
     status_display = StatusDisplay()
-    # stat_board.enemy_generator = enemy_generator.enemies_remaining
+    #
+    # get all obstacle around the bird
+    dummy_tile = pg.sprite.Sprite()
+    dummy_tile.rect = pg.Rect(0, 0, BLOCK_SIZE, BLOCK_SIZE)
+    timer_fortify = 0
+    state_fortify = False
+    reward_fortify_picked = False
+    #
     while not done:
         """
         # print(temp_count)
@@ -176,7 +193,7 @@ if __name__ == '__main__':
         pg.draw.rect(SCREEN, COLORS["background"], game_area)
         #
         ice_group.draw(SCREEN)
-        # ocean_group.draw(SCREEN)
+        ocean_group.draw(SCREEN)
         all_sprites.draw(SCREEN)
         forest_group.draw(SCREEN)
         all_rewards.draw(SCREEN)
@@ -193,6 +210,38 @@ if __name__ == '__main__':
                        (BLOCK_SIZE * 26, 0)], 1)
         """
         # pg.draw.rect(SCREEN, game_area_color, (0, 0, 2 * BLOCK_SIZE, 2 * BLOCK_SIZE), 1)
+
+        # Fortify
+        for player in player_group:
+            if player.reward_fortify_picked is True:
+                reward_fortify_picked = True
+                player.reward_fortify_picked = False
+        #
+        if reward_fortify_picked is True:
+            print('hi')
+            for i in range(8):
+                dummy_tile.rect.topleft = GUARD['locations'][i]
+                existing_tile = pg.sprite.spritecollideany(dummy_tile, obstacle_group)
+                if existing_tile is not None:
+                    existing_tile.kill()
+                obstacle_group.add(Steel(pos=GUARD['locations'][i]))
+            state_fortify = True
+            timer_fortify = TIMERS['fortify_duration']
+            reward_fortify_picked = False
+            all_sprites.add(obstacle_group)
+        #
+        if state_fortify is True:
+            if timer_fortify < 1:
+                state_fortify = False
+                for i in range(8):
+                    dummy_tile.rect.topleft = GUARD['locations'][i]
+                    existing_tile = pg.sprite.spritecollideany(dummy_tile, obstacle_group)
+                    if existing_tile is not None:
+                        existing_tile.kill()
+                    obstacle_group.add(Brick(pos=GUARD['locations'][i]))
+                all_sprites.add(obstacle_group)
+            timer_fortify -= 1
+
         pg.display.flip()
         clock.tick(FPS)
 

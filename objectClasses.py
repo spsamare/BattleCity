@@ -11,14 +11,16 @@ TIMERS = {
     'blink': FPS // 2,
     'enemy_respawn_normal': 10 * FPS,
     'enemy_respawn_urgent': 3 * FPS,
-    'enemy_spawn_delay': 2 * FPS
+    'enemy_spawn_delay': 2 * FPS,
+    'fortify_duration': 20 * FPS
 }
 
 SPEED = {
     'move': BLOCK_SIZE / 2,
     'move_delay': 10,
-    'bullet': 2 * BLOCK_SIZE,
-    'bullet_delay': 2 * FPS
+    'bullet': BLOCK_SIZE,
+    'bullet_delay': 5,
+    'bullet_interval': 2 * FPS
 }
 
 STATES = {
@@ -27,9 +29,18 @@ STATES = {
     'loose': 2
 }
 
+GUARD = {
+    'locations': [
+        (11 * BLOCK_SIZE, 25 * BLOCK_SIZE), (11 * BLOCK_SIZE, 24 * BLOCK_SIZE),
+        (11 * BLOCK_SIZE, 23 * BLOCK_SIZE), (12 * BLOCK_SIZE, 23 * BLOCK_SIZE),
+        (13 * BLOCK_SIZE, 23 * BLOCK_SIZE), (14 * BLOCK_SIZE, 23 * BLOCK_SIZE),
+        (14 * BLOCK_SIZE, 24 * BLOCK_SIZE), (14 * BLOCK_SIZE, 25 * BLOCK_SIZE),
+    ]
+}
+
 
 class Tank(pg.sprite.Sprite):
-    def __init__(self, pos, game_area_, images):
+    def __init__(self, pos, game_area_, images, level=0):
         super().__init__()
         self.rect = pg.Rect(0, 0, 2 * BLOCK_SIZE, 2 * BLOCK_SIZE)
         self.image_state = True
@@ -52,10 +63,9 @@ class Tank(pg.sprite.Sprite):
         self.obstacles = None  # pg.sprite.Group()
         self.bullet_exceptions = pg.sprite.Group()
         self.bullet_list = None
-        self.level = 0
         #
         self.shoot_count = 0
-        self.shoot_count_max = SPEED['bullet_delay']
+        self.shoot_count_max = SPEED['bullet_interval']
         self.shoot_speed = 1.0
         #
         self.hit_by = None
@@ -77,6 +87,13 @@ class Tank(pg.sprite.Sprite):
         self.frozen_counter = 0
         #
         self.ice_areas = None
+        self.reward_fortify_picked = False
+        #
+        if level > 0:
+            self.level = level - 1
+            self.level_change(1)
+        else:
+            self.level = 1
 
     def update(self):
         if self.is_alive:
@@ -152,19 +169,19 @@ class Tank(pg.sprite.Sprite):
         # print(self.level)
         self.image = self.images[self.level * 8 + self.direction]
         if self.level == 3:
-            self.shoot_count_max = SPEED['bullet_delay'] // 2
+            self.shoot_count_max = SPEED['bullet_interval'] // 2
             self.shoot_speed = 1.5
             self.move_count_max = SPEED['move_delay'] - 2
         elif self.level == 2:
-            self.shoot_count_max = SPEED['bullet_delay'] // 2
+            self.shoot_count_max = SPEED['bullet_interval'] // 2
             self.shoot_speed = 1.0
             self.move_count_max = SPEED['move_delay'] - 2
         elif self.level == 1:
-            self.shoot_count_max = SPEED['bullet_delay'] // 2
+            self.shoot_count_max = SPEED['bullet_interval'] // 2
             self.shoot_speed = 1.0
             self.move_count_max = SPEED['move_delay']
         else:
-            self.shoot_count_max = SPEED['bullet_delay']
+            self.shoot_count_max = SPEED['bullet_interval']
             self.shoot_speed = 1.0
             self.move_count_max = SPEED['move_delay']
         # print(self.level)
@@ -215,14 +232,14 @@ class Tank(pg.sprite.Sprite):
         elif reward_name == 'blast':
             for opponent in self.opponents:
                 opponent.hit_by = self
-        else:
-            print(reward_name)
+        else:  # fortify
+            self.reward_fortify_picked = True
 
 
 class Enemy(Tank):
     def __init__(self, pos, game_area_, images=image_library[enemy1_sprite_start:enemy1_sprite_end],
                  level=0):
-        super().__init__(pos, game_area_, images)
+        super().__init__(pos, game_area_, images, level)
         #
         self.direction = DIRECTION["S"]
         self.image = images[self.direction]
@@ -365,8 +382,8 @@ class EnemySpecial(Enemy):
 
 
 class Player(Tank):
-    def __init__(self, pos, game_area_, images, key_set=KEYS1):
-        super().__init__(pos, game_area_, images)
+    def __init__(self, pos, game_area_, images, level=0, key_set=KEYS1):
+        super().__init__(pos, game_area_, images, level)
         #
         self.direction = DIRECTION["N"]
         self.image = images[self.direction]
@@ -535,7 +552,7 @@ class Bullet(pg.sprite.Sprite):
         self.game_area = game_area_
         self.speed = owner.shoot_speed * SPEED['bullet']
         self.move_count = 0
-        self.move_count_max = 10
+        self.move_count_max = SPEED['bullet_delay']
         self.x = self.rect.centerx
         self.y = self.rect.centery
         self.speed_x = 0.
