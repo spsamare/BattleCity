@@ -1,7 +1,6 @@
 from init import *
 import numpy as np
 
-
 TIMERS = {
     'player_immortal': 5 * FPS,
     'enemy_immortal': 2 * FPS,
@@ -12,7 +11,8 @@ TIMERS = {
     'enemy_respawn_normal': 10 * FPS,
     'enemy_respawn_urgent': 3 * FPS,
     'enemy_spawn_delay': 2 * FPS,
-    'fortify_duration': 20 * FPS
+    'fortify_duration': 20 * FPS,
+    'delay_next_stage': 5 * FPS
 }
 
 SPEED = {
@@ -26,7 +26,8 @@ SPEED = {
 STATES = {
     'ongoing': 0,
     'win': 1,
-    'loose': 2
+    'loose': 2,
+    'paused': 3
 }
 
 GUARD = {
@@ -93,7 +94,7 @@ class Tank(pg.sprite.Sprite):
             self.level = level - 1
             self.level_change(1)
         else:
-            self.level = 1
+            self.level = 0
 
     def update(self):
         if self.is_alive:
@@ -170,14 +171,14 @@ class Tank(pg.sprite.Sprite):
         self.image = self.images[self.level * 8 + self.direction]
         if self.level == 3:
             self.shoot_count_max = SPEED['bullet_interval'] // 2
-            self.shoot_speed = 1.5
+            self.shoot_speed = 1.0
             self.move_count_max = SPEED['move_delay'] - 2
         elif self.level == 2:
             self.shoot_count_max = SPEED['bullet_interval'] // 2
             self.shoot_speed = 1.0
             self.move_count_max = SPEED['move_delay'] - 2
         elif self.level == 1:
-            self.shoot_count_max = SPEED['bullet_interval'] // 2
+            self.shoot_count_max = 3 * SPEED['bullet_interval'] // 4
             self.shoot_speed = 1.0
             self.move_count_max = SPEED['move_delay']
         else:
@@ -803,7 +804,7 @@ class EnemyGenerator:
         self.all_sprites = all_sprites
         #
         self.enemy_group = enemy_group
-        self.enemies_remaining = 17
+        self.enemies_remaining = ENEMY_COUNT - 3
         self.enemies_active_max = 6
         # self.enemies_active_group = None
         #
@@ -843,8 +844,10 @@ class EnemyGenerator:
                 self.respawn_counter = np.minimum(self.respawn_counter - 1,
                                                   np.random.randint(TIMERS['enemy_respawn_urgent'],
                                                                     TIMERS['enemy_respawn_normal']))
-            self.spawn(is_special=self.enemies_remaining%5==0)
-        # self.enemies_active_group = len(self.enemy_group)
+            self.spawn(
+                level=np.random.choice([0, 1, 2, 3], 1, p=[.5, .3, .15, .05])[0],
+                is_special=self.enemies_remaining % 5 == 0
+            )
 
     def spawn(self, level=0, is_special=False, location=None):
         # print(self.respawn_counter)
@@ -889,20 +892,21 @@ class StatusDisplay:
         ]
 
     def draw(self, game_state, stage='000'):
-        pg.draw.rect(SCREEN, COLORS['static'], self.back_pallet)
         if game_state == STATES['ongoing']:
             # print('test')
+            pg.draw.rect(SCREEN, COLORS['static'], self.back_pallet)
             SCREEN.blit(self.text_first_images[0], self.first_pallet)
             for i in range(3):
-                SCREEN.blit(self.num_images[int(stage[i])], self.second_pallet[i+1])
+                SCREEN.blit(self.num_images[int(stage[i])], self.second_pallet[i + 1])
         elif game_state == STATES['win']:
+            pg.draw.rect(SCREEN, COLORS['static'], self.back_pallet)
             SCREEN.blit(self.text_first_images[0], self.first_pallet)
             for i in range(2):
-                SCREEN.blit(self.text_second_images[int(i-2)], self.second_pallet[i + 2])
+                SCREEN.blit(self.text_second_images[int(i - 2)], self.second_pallet[i + 2])
         elif game_state == STATES['loose']:
+            pg.draw.rect(SCREEN, COLORS['static'], self.back_pallet)
             SCREEN.blit(self.text_first_images[-1], self.first_pallet)
             for i in range(4):
                 SCREEN.blit(self.text_second_images[i], self.second_pallet[i])
         else:
-            pass
-
+            SCREEN.blit(self.text_first_images[1], self.first_pallet)

@@ -1,4 +1,4 @@
-import os
+import os, glob
 from spritesheet import *
 
 DIRECTION = {
@@ -39,6 +39,8 @@ RES_SCALE = 4
 
 FPS = 60
 
+ENEMY_COUNT = 20
+
 os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (100, 100)
 aspect_ratio = 3 / 4  # 9/16
 WIDTH = 800  # 1280  # 1280 560
@@ -77,3 +79,7 @@ REWARD_PROBABILITY = [
     .175,  # blast
     .05  # life
 ]
+
+map_files = [f for f in os.listdir('maps') if f.endswith('.map')]
+MAP_COUNT = len(map_files)
+print(MAP_COUNT)
