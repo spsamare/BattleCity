@@ -101,10 +101,10 @@ class Tank(pg.sprite.Sprite):
             if self.hit_by is None or self.immortal is True:
                 if self.shoot_count > 0:
                     self.shoot_count = (self.shoot_count + 1) % self.shoot_count_max
-                if self.level == 3 and self.shoot_count == 10:
-                    bullet_ = Bullet(self, self.game_area)
-                    self.groups()[0].add(bullet_)
-                    # self.obstacles.add(bullet_)
+                # if self.level == 3 and self.shoot_count == 10:
+                #    bullet_ = Bullet(self, self.game_area)
+                #    self.groups()[0].add(bullet_)
+                #    # self.obstacles.add(bullet_)
                 #
                 if self.immortal_timer > 0:
                     self.immortal = True
@@ -170,17 +170,17 @@ class Tank(pg.sprite.Sprite):
         # print(self.level)
         self.image = self.images[self.level * 8 + self.direction]
         if self.level == 3:
-            self.shoot_count_max = SPEED['bullet_interval'] // 2
+            self.shoot_count_max = 5 * SPEED['bullet_interval'] // 8
             self.shoot_speed = 1.0
-            self.move_count_max = SPEED['move_delay'] - 2
+            self.move_count_max = SPEED['move_delay'] - 3
         elif self.level == 2:
-            self.shoot_count_max = SPEED['bullet_interval'] // 2
+            self.shoot_count_max = 4 * SPEED['bullet_interval'] // 6
             self.shoot_speed = 1.0
             self.move_count_max = SPEED['move_delay'] - 2
         elif self.level == 1:
             self.shoot_count_max = 3 * SPEED['bullet_interval'] // 4
             self.shoot_speed = 1.0
-            self.move_count_max = SPEED['move_delay']
+            self.move_count_max = SPEED['move_delay'] - 1
         else:
             self.shoot_count_max = SPEED['bullet_interval']
             self.shoot_speed = 1.0
@@ -198,8 +198,14 @@ class Tank(pg.sprite.Sprite):
         self.hit_by = None
         if self.level > 0:
             self.level_change(change=0)
+            if not self.is_player:
+                pg.mixer.Sound.play(sound_library['h_enemy'][self.level])
         else:
             self.is_alive = False
+            if self.is_player:
+                pg.mixer.Sound.play(sound_library['p_destroy'])
+            else:
+                pg.mixer.Sound.play(sound_library['d_enemy'])
             self.lives = max(self.lives - 1, 0)
             self.respawn_counter = FPS
             self.image = self.images[-1]
@@ -224,9 +230,11 @@ class Tank(pg.sprite.Sprite):
             self.immortal = True
             self.immortal_timer = TIMERS['reward_immortal']
         elif reward_name == 'upgrade':
+            pg.mixer.Sound.play(sound_library['r_star'])
             self.level_change()
         elif reward_name == 'life':
             self.lives += 1
+            pg.mixer.Sound.play(sound_library['r_life'])
         elif reward_name == 'freeze':
             for opponent in self.opponents:
                 opponent.frozen = True
@@ -235,6 +243,7 @@ class Tank(pg.sprite.Sprite):
                 opponent.hit_by = self
         else:  # fortify
             self.reward_fortify_picked = True
+            pg.mixer.Sound.play(sound_library['r_fortify'])
 
 
 class Enemy(Tank):
@@ -257,16 +266,13 @@ class Enemy(Tank):
         # if shine is True:
         #    self.start_countdown = TIMERS['enemy_spawn_delay']
         #    self.groups()[0].add(Shine(self, self.game_area))
+        # print(self.level)
 
     def update(self):
         if self.is_alive:
             if self.hit_by is None or self.immortal is True:
                 if self.shoot_count > 0:
                     self.shoot_count = (self.shoot_count + 1) % self.shoot_count_max
-                if self.level == 3 and self.shoot_count == 10:
-                    bullet_ = Bullet(self, self.game_area)
-                    self.groups()[0].add(bullet_)
-                    # self.obstacles.add(bullet_)
                 #
                 if self.immortal_timer > 0:
                     self.immortal = True
@@ -433,11 +439,16 @@ class Player(Tank):
                 if old_direction == self.direction:
                     if key_pressed:
                         self.animate()
+                        # pg.mixer.Sound.play(sound_library['p_move'])
                         if self.can_move(self.speed_x, self.speed_y):
                             self.move()
                     elif self.move_count > 0:
                         self.move()
                         self.animate()
+                        # pg.mixer.Sound.play(sound_library['p_move'])
+                    else:
+                        pass
+                        # pg.mixer.Sound.play(sound_library['p_idle'])
                 else:
                     self.image = self.images[self.level * 8 + self.direction]
 
@@ -474,6 +485,8 @@ class Brick(Obstacle):
     def update(self):
         if self.hit_by is not None:
             self.hit_direction = (self.hit_by.direction + 2) % 4  # translate into self PoV
+            # if self.hit_by.owner.is_player:
+            #    pg.mixer.Sound.play(sound_library['h_brick'])
             self.brick_break()
 
     def brick_break(self):
@@ -510,12 +523,21 @@ class Bird(Obstacle):
     def update(self):
         if self.hit_by is not None:
             self.image = self.images[1]
+            pg.mixer.Sound.play(sound_library['p_destroy'])
             self.round.failed()
 
 
 class Steel(Obstacle):
     def __init__(self, pos, image=image_library[obstacle_steel_sprite]):
         super().__init__(pos, image)
+        self.hit_by = None
+
+    """
+    def update(self):
+        if self.hit_by is not None:
+            if self.hit_by.owner.is_player:
+                pg.mixer.Sound.play(sound_library['h_steel'])
+    """
 
 
 class Forest(Obstacle):
@@ -565,6 +587,9 @@ class Bullet(pg.sprite.Sprite):
         self.obstacles.add(owner.opponents)
         self.obstacles.remove(owner.bullet_exceptions)
         self.hit_by = None
+        #
+        if owner.is_player is True:
+            pg.mixer.Sound.play(sound_library['p_fire'])
 
     def set_speed(self):
         if self.direction == DIRECTION["N"]:
@@ -583,8 +608,10 @@ class Bullet(pg.sprite.Sprite):
             if self.move_count == 0:
                 self.x = self.rect.centerx
                 self.y = self.rect.centery
-            self.rect.centery = self.y + self.speed_y * self.speed * (self.move_count + 1) / self.move_count_max
-            self.rect.centerx = self.x + self.speed_x * self.speed * (self.move_count + 1) / self.move_count_max
+            if not self.speed_y == 0.:
+                self.rect.centery = self.y + self.speed_y * self.speed * (self.move_count + 1) / self.move_count_max
+            else:
+                self.rect.centerx = self.x + self.speed_x * self.speed * (self.move_count + 1) / self.move_count_max
             self.move_count += 1
             if self.move_count == self.move_count_max:
                 self.move_count = 0
@@ -698,6 +725,7 @@ class Reward(pg.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=pos)
         self.name = name
         self.counter = 0
+        pg.mixer.Sound.play(sound_library['r_'])
 
     def update(self):
         if self.counter < TIMERS['reward_duration']:
@@ -794,7 +822,8 @@ class EnemyGenerator:
     def __init__(self, game_area, all_sprites,
                  enemy_group, player_group,
                  obstacle_group, ocean_group,
-                 world_bullet_list, all_rewards):
+                 world_bullet_list, all_rewards,
+                 spawn_order):
         self.spawn_locations = [
             (0 * BLOCK_SIZE, 0 * BLOCK_SIZE),
             (12 * BLOCK_SIZE, 0 * BLOCK_SIZE),
@@ -815,10 +844,14 @@ class EnemyGenerator:
         self.rewards = all_rewards
         #
         self.respawn_counter = TIMERS['enemy_respawn_normal']
+        self.spawn_order = spawn_order
         #
-        enemy1 = Enemy(pos=self.spawn_locations[0], game_area_=self.game_area)
-        enemy2 = EnemySpecial(pos=self.spawn_locations[1], game_area_=self.game_area)
-        enemy3 = Enemy(pos=self.spawn_locations[2], game_area_=self.game_area)
+        enemy1 = Enemy(pos=self.spawn_locations[0], game_area_=self.game_area,
+                       level=0 if len(self.spawn_order) == 0 else self.spawn_order.pop(0))
+        enemy2 = EnemySpecial(pos=self.spawn_locations[1], game_area_=self.game_area,
+                              level=0 if len(self.spawn_order) == 0 else self.spawn_order.pop(0))
+        enemy3 = Enemy(pos=self.spawn_locations[2], game_area_=self.game_area,
+                       level=0 if len(self.spawn_order) == 0 else self.spawn_order.pop(0))
         self.all_sprites.add(enemy1)
         self.all_sprites.add(enemy2)
         self.all_sprites.add(enemy3)
@@ -858,6 +891,8 @@ class EnemyGenerator:
             placeholder.rect = pg.Rect(self.spawn_locations[location], (2 * BLOCK_SIZE, 2 * BLOCK_SIZE))
             if pg.sprite.spritecollideany(placeholder, self.enemy_group) is None and \
                     pg.sprite.spritecollideany(placeholder, self.player_group) is None:
+                if len(self.spawn_order) > 0:
+                    level = self.spawn_order.pop(0)
                 enemy = EnemySpecial(pos=self.spawn_locations[location], game_area_=self.game_area, level=level) \
                     if is_special else Enemy(pos=self.spawn_locations[location], game_area_=self.game_area, level=level)
                 self.all_sprites.add(enemy)

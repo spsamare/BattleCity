@@ -19,7 +19,7 @@ from objectClasses import *
 
 
 class MapBuilder:
-    def __init__(self, oceans, bricks, forests, ice, steel):
+    def __init__(self, oceans, bricks, forests, ice, steel, spawn_order):
         self.directory = 'maps/'
         self.map = None
         self.ocean_group = oceans
@@ -27,6 +27,8 @@ class MapBuilder:
         self.forest_group = forests
         self.ice_group = ice
         self.steel_group = steel
+        #
+        self.spawn_order = spawn_order
 
     def get_map(self, map_num=0):
         self.map = []
@@ -34,6 +36,11 @@ class MapBuilder:
             for i in range(13):
                 line = fp.readline().split(' ')
                 self.map.append(line)
+
+            if fp.readline():
+                line = fp.readline().split(' ')
+                for _ in line:
+                    self.spawn_order.append(int(_[0]))
 
         self.get_tiles(self.ocean_group, Ocean, 'o')
         self.get_tiles(self.brick_group, Brick, 'b')

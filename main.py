@@ -38,14 +38,7 @@ if __name__ == '__main__':
         xy_list = list(range(2, 40 * 30))
         np.random.shuffle(xy_list)
         obstacle_group = pg.sprite.Group()
-        """
-        for o in range(num_obstacles):
-            x_val = xy_list[o] // 30
-            y_val = xy_list[o] % 30
-            obstacle_group.add(
-                Brick((x_val * BLOCK_SIZE, y_val * BLOCK_SIZE), num=np.random.randint(5))
-            )
-        """
+        enemy_order = []
         # Add environment elements
         ocean_group = pg.sprite.Group()
         brick_group = pg.sprite.Group()
@@ -53,7 +46,7 @@ if __name__ == '__main__':
         ice_group = pg.sprite.Group()
         steel_group = pg.sprite.Group()
         map_generator = MapBuilder(oceans=ocean_group, bricks=brick_group, forests=forest_group,
-                                   ice=ice_group, steel=steel_group)
+                                   ice=ice_group, steel=steel_group, spawn_order=enemy_order)
         map_generator.get_map(map_num=stage_num)
         obstacle_group.add(ocean_group)
         obstacle_group.add(brick_group)
@@ -94,7 +87,8 @@ if __name__ == '__main__':
         enemy_generator = EnemyGenerator(game_area, all_sprites,
                                          enemy_group, player_group,
                                          obstacle_group, ocean_group,
-                                         world_bullet_list, all_rewards)
+                                         world_bullet_list, all_rewards,
+                                         enemy_order)
 
         # update teams
         for player in player_group:
@@ -127,6 +121,7 @@ if __name__ == '__main__':
 
             if agent1.lives + agent2.lives == 0:
                 this_round.failed()
+                done_game = True
 
             if not this_round.finished and countdown_start == 0:
                 pressed_keys = pg.key.get_pressed()

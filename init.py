@@ -1,5 +1,6 @@
 import os, glob
 from spritesheet import *
+from sounds import *
 
 DIRECTION = {
     "N": 0,
@@ -83,3 +84,18 @@ REWARD_PROBABILITY = [
 map_files = [f for f in os.listdir('maps') if f.endswith('.map')]
 MAP_COUNT = len(map_files)
 print(MAP_COUNT)
+
+sound_library = {
+    'p_idle': s_idle,
+    'p_move': s_move,
+    'p_fire': s_fire,
+    'p_destroy': s_p_destroy,
+    'h_brick': s_hit_brick,
+    'h_steel': s_hit_steel,
+    'h_enemy': s_hit_enemy,
+    'd_enemy': s_e_destroy,
+    'r_': s_reward_appear,
+    'r_star': s_reward_star,
+    'r_life': s_reward_life,
+    'r_fortify': s_reward_fortify
+}
