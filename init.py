@@ -38,16 +38,16 @@ AGENT_SIZE = 2
 
 RES_SCALE = 4
 
-FPS = 60
+FPS = 120
 
 ENEMY_COUNT = 20
 
 os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (100, 100)
 aspect_ratio = 3 / 4  # 9/16
-WIDTH = 800  # 1280  # 1280 560
+WIDTH = 1024  # 1280  # 1280 560
 HEIGHT = int(WIDTH * aspect_ratio)
 BLOCK_SIZE = 2 * int(HEIGHT / 52)
-SCREEN = pg.display.set_mode((WIDTH, HEIGHT))
+SCREEN = pg.display.set_mode((WIDTH, HEIGHT),  pg.FULLSCREEN)
 
 image_library, \
     player1_sprite_start, player1_sprite_end, \
@@ -76,8 +76,8 @@ REWARD_PROBABILITY = [
     .2,  # shield
     .2,  # freeze
     .2,  # fortify
-    .175,  # upgrade
-    .175,  # blast
+    .2,  # upgrade
+    .15,  # blast
     .05  # life
 ]
 

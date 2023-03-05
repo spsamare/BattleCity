@@ -17,10 +17,10 @@ TIMERS = {
 
 SPEED = {
     'move': BLOCK_SIZE / 2,
-    'move_delay': 10,
-    'bullet': BLOCK_SIZE,
+    'move_delay': 20,
+    'bullet': BLOCK_SIZE // 2,
     'bullet_delay': 5,
-    'bullet_interval': 2 * FPS
+    'bullet_interval': FPS // 2
 }
 
 STATES = {
@@ -64,6 +64,7 @@ class Tank(pg.sprite.Sprite):
         self.obstacles = None  # pg.sprite.Group()
         self.bullet_exceptions = pg.sprite.Group()
         self.bullet_list = None
+        self.bullets = pg.sprite.Group()
         #
         self.shoot_count = 0
         self.shoot_count_max = SPEED['bullet_interval']
@@ -188,10 +189,12 @@ class Tank(pg.sprite.Sprite):
         # print(self.level)
 
     def shoot(self):
-        if self.shoot_count == 0:
+        if len(self.bullets) < 1 and self.shoot_count == 0:
+        # if self.shoot_count == 0:
             bullet_ = Bullet(self, self.game_area)
             self.groups()[0].add(bullet_)
             self.bullet_list.add(bullet_)
+            self.bullets.add(bullet_)
             self.shoot_count += 1
 
     def blast(self):
@@ -229,6 +232,7 @@ class Tank(pg.sprite.Sprite):
         if reward_name == 'shield':
             self.immortal = True
             self.immortal_timer = TIMERS['reward_immortal']
+            pg.mixer.Sound.play(sound_library['r_fortify'])
         elif reward_name == 'upgrade':
             pg.mixer.Sound.play(sound_library['r_star'])
             self.level_change()
@@ -236,6 +240,7 @@ class Tank(pg.sprite.Sprite):
             self.lives += 1
             pg.mixer.Sound.play(sound_library['r_life'])
         elif reward_name == 'freeze':
+            pg.mixer.Sound.play(sound_library['r_fortify'])
             for opponent in self.opponents:
                 opponent.frozen = True
         elif reward_name == 'blast':
@@ -485,8 +490,8 @@ class Brick(Obstacle):
     def update(self):
         if self.hit_by is not None:
             self.hit_direction = (self.hit_by.direction + 2) % 4  # translate into self PoV
-            # if self.hit_by.owner.is_player:
-            #    pg.mixer.Sound.play(sound_library['h_brick'])
+            if self.hit_by.hit_sound:
+               pg.mixer.Sound.play(sound_library['h_brick'])
             self.brick_break()
 
     def brick_break(self):
@@ -525,6 +530,7 @@ class Bird(Obstacle):
             self.image = self.images[1]
             pg.mixer.Sound.play(sound_library['p_destroy'])
             self.round.failed()
+            self.hit_by = None
 
 
 class Steel(Obstacle):
@@ -532,12 +538,11 @@ class Steel(Obstacle):
         super().__init__(pos, image)
         self.hit_by = None
 
-    """
     def update(self):
         if self.hit_by is not None:
-            if self.hit_by.owner.is_player:
+            if self.hit_by.hit_sound:
                 pg.mixer.Sound.play(sound_library['h_steel'])
-    """
+            self.hit_by = None
 
 
 class Forest(Obstacle):
@@ -587,9 +592,11 @@ class Bullet(pg.sprite.Sprite):
         self.obstacles.add(owner.opponents)
         self.obstacles.remove(owner.bullet_exceptions)
         self.hit_by = None
+        self.hit_sound = False
         #
         if owner.is_player is True:
             pg.mixer.Sound.play(sound_library['p_fire'])
+            self.hit_sound = True
 
     def set_speed(self):
         if self.direction == DIRECTION["N"]:
@@ -608,13 +615,12 @@ class Bullet(pg.sprite.Sprite):
             if self.move_count == 0:
                 self.x = self.rect.centerx
                 self.y = self.rect.centery
-            if not self.speed_y == 0.:
-                self.rect.centery = self.y + self.speed_y * self.speed * (self.move_count + 1) / self.move_count_max
-            else:
-                self.rect.centerx = self.x + self.speed_x * self.speed * (self.move_count + 1) / self.move_count_max
+            self.rect.centery = self.y + self.speed_y * self.speed * (self.move_count + 1) / self.move_count_max
+            self.rect.centerx = self.x + self.speed_x * self.speed * (self.move_count + 1) / self.move_count_max
             self.move_count += 1
             if self.move_count == self.move_count_max:
                 self.move_count = 0
+            #
             if not self.game_area.contains(self.rect):
                 self.kill_animate()
             else:

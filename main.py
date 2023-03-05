@@ -127,7 +127,7 @@ if __name__ == '__main__':
                 pressed_keys = pg.key.get_pressed()
                 # print(pressed_keys[pg.K_ESCAPE])
                 if pressed_keys[pg.K_ESCAPE] == 1 and not this_round.finished:
-                    status_display.draw(game_state=STATES['paused'])
+                    status_display.draw(game_state=STATES['paused'], stage=str(stage_num + 1).zfill(3))
                     pg.display.flip()
                     for _ in range(2 * FPS):
                         clock.tick(FPS)
@@ -190,7 +190,7 @@ if __name__ == '__main__':
             stat_board.draw()
             #
             if countdown_start > 0 or this_round.finished or this_round.state == STATES['paused']:
-                status_display.draw(game_state=this_round.state)
+                status_display.draw(game_state=this_round.state, stage=str(stage_num + 1).zfill(3))
 
             if this_round.finished:
                 if timer_next_stage < TIMERS['delay_next_stage']:
@@ -199,6 +199,7 @@ if __name__ == '__main__':
                     done_stage = True
                     player_data[0] = [agent1.lives, agent2.lives]
                     player_data[1] = [agent1.level, agent2.level]
+                    print(done_game)
             # draw border
             """
             pg.draw.lines(SCREEN, game_area_color, False,
