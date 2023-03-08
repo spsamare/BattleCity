@@ -134,7 +134,7 @@ def load_sprites(block_size, resolution_scale, fullpath='res/tank_res_high.png',
         (512, 128, 16, 16), (544, 136, 16, 8), (536, 128, 8, 16), (576, 128, 16, 8), (560, 128, 8, 16),  # bricks
         (512, 144, 16, 16),  # steel
         (544, 64, 16, 16),  # forest
-        (576, 64, 32, 32),  # ice
+        (576, 64, 16, 16),  # ice
         (544, 96, 16, 16), (576, 96, 16, 16)  # ocean
     )
     obstacle_brick_sprite_start = blast_sprite_end

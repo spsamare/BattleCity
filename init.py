@@ -83,7 +83,6 @@ REWARD_PROBABILITY = [
 
 map_files = [f for f in os.listdir('maps') if f.endswith('.map')]
 MAP_COUNT = len(map_files)
-print(MAP_COUNT)
 
 sound_library = {
     'p_idle': s_idle,

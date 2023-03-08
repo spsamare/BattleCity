@@ -67,12 +67,14 @@ if __name__ == '__main__':
                         images=image_library[player1_sprite_start:player1_sprite_end],
                         level=player_data[1][0])
         agent1.lives = player_data[0][0]
+        agent1.points = [player_data[2][0]]
         all_sprites.add(agent1)
 
         agent2 = Player(pos=(16 * BLOCK_SIZE, 24 * BLOCK_SIZE), game_area_=game_area, key_set=KEYS2,
                         images=image_library[player2_sprite_start:player2_sprite_end],
                         level=player_data[1][1])
         agent2.lives = player_data[0][1]
+        agent2.points = [player_data[2][1]]
         all_sprites.add(agent2)
 
         # agent1.partners.add(agent2)
@@ -86,7 +88,7 @@ if __name__ == '__main__':
         enemy_group = pg.sprite.Group()
         enemy_generator = EnemyGenerator(game_area, all_sprites,
                                          enemy_group, player_group,
-                                         obstacle_group, ocean_group,
+                                         obstacle_group, ocean_group, ice_group,
                                          world_bullet_list, all_rewards,
                                          enemy_order)
 
@@ -98,6 +100,7 @@ if __name__ == '__main__':
             player.bullet_exceptions.add(ocean_group)
             player.bullet_list = world_bullet_list
             player.rewards = all_rewards
+            player.ice_areas = ice_group
 
         temp_count = 0
         stat_board = StatBoard(player1=agent1, player2=agent2, enemy_generator=enemy_generator)
@@ -109,6 +112,10 @@ if __name__ == '__main__':
         timer_fortify = 0
         state_fortify = False
         reward_fortify_picked = False
+        #
+        for player in player_group:
+            if player.lives == 0:
+                player.is_alive = False
         #
         while not done_stage:
             for event in pg.event.get():
@@ -125,7 +132,10 @@ if __name__ == '__main__':
 
             if not this_round.finished and countdown_start == 0:
                 pressed_keys = pg.key.get_pressed()
-                # print(pressed_keys[pg.K_ESCAPE])
+                if pressed_keys[pg.K_DELETE] == 1:
+                    done_game = True
+                    done_stage = True
+                    break
                 if pressed_keys[pg.K_ESCAPE] == 1 and not this_round.finished:
                     status_display.draw(game_state=STATES['paused'], stage=str(stage_num + 1).zfill(3))
                     pg.display.flip()
@@ -199,7 +209,10 @@ if __name__ == '__main__':
                     done_stage = True
                     player_data[0] = [agent1.lives, agent2.lives]
                     player_data[1] = [agent1.level, agent2.level]
-                    print(done_game)
+                    player_data[2] = [sum(agent1.points), sum(agent2.points)]
+                    if this_round.state == STATES['loose']:
+                        done_game = True
+                    # print(done_game)
             # draw border
             """
             pg.draw.lines(SCREEN, game_area_color, False,

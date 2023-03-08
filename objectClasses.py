@@ -16,7 +16,7 @@ TIMERS = {
 }
 
 SPEED = {
-    'move': BLOCK_SIZE / 2,
+    'move': BLOCK_SIZE // 2,
     'move_delay': 20,
     'bullet': BLOCK_SIZE // 2,
     'bullet_delay': 5,
@@ -37,6 +37,15 @@ GUARD = {
         (13 * BLOCK_SIZE, 23 * BLOCK_SIZE), (14 * BLOCK_SIZE, 23 * BLOCK_SIZE),
         (14 * BLOCK_SIZE, 24 * BLOCK_SIZE), (14 * BLOCK_SIZE, 25 * BLOCK_SIZE),
     ]
+}
+
+POINTS = {
+    '0': 10,
+    '1': 2,
+    '2': 3,
+    '3': 5,
+    'r0': 5,
+    'rx': 15
 }
 
 
@@ -91,6 +100,8 @@ class Tank(pg.sprite.Sprite):
         self.ice_areas = None
         self.reward_fortify_picked = False
         #
+        self.points = []
+        #
         if level > 0:
             self.level = level - 1
             self.level_change(1)
@@ -135,10 +146,14 @@ class Tank(pg.sprite.Sprite):
         if self.move_count == 0:
             self.x = self.rect.centerx
             self.y = self.rect.centery
-        self.rect.centery = self.y + self.speed_y * (self.move_count + 1) / self.move_count_max
-        self.rect.centerx = self.x + self.speed_x * (self.move_count + 1) / self.move_count_max
+        if pg.sprite.spritecollideany(self, self.ice_areas) is not None:
+            ice_factor = 2
+        else:
+            ice_factor = 1
+        self.rect.centery = self.y + self.speed_y * (self.move_count + 1) / (self.move_count_max // ice_factor)
+        self.rect.centerx = self.x + self.speed_x * (self.move_count + 1) / (self.move_count_max // ice_factor)
         self.move_count += 1
-        if self.move_count == self.move_count_max:
+        if self.move_count >= self.move_count_max // ice_factor:
             self.move_count = 0
 
     def animate(self):
@@ -229,6 +244,7 @@ class Tank(pg.sprite.Sprite):
         self.has_shield = False
 
     def grant_reward(self, reward_name):
+        self.points.append(POINTS['r0'])
         if reward_name == 'shield':
             self.immortal = True
             self.immortal_timer = TIMERS['reward_immortal']
@@ -244,6 +260,7 @@ class Tank(pg.sprite.Sprite):
             for opponent in self.opponents:
                 opponent.frozen = True
         elif reward_name == 'blast':
+            self.points.append(POINTS['r0'])
             for opponent in self.opponents:
                 opponent.hit_by = self
         else:  # fortify
@@ -594,6 +611,8 @@ class Bullet(pg.sprite.Sprite):
         self.hit_by = None
         self.hit_sound = False
         #
+        self.points = owner.points
+        #
         if owner.is_player is True:
             pg.mixer.Sound.play(sound_library['p_fire'])
             self.hit_sound = True
@@ -628,6 +647,8 @@ class Bullet(pg.sprite.Sprite):
                 if collided_sprite is not None:
                     # collided_sprite.hit_direction = (self.direction + 2) % 4
                     collided_sprite.hit_by = self
+                    if hasattr(collided_sprite, "is_player"):
+                        self.points.append(POINTS[str(collided_sprite.level)])
                     self.kill_animate()
                 collided_bullet = pg.sprite.spritecollide(self, self.bullet_list, dokill=False)
                 if len(collided_bullet) > 1:
@@ -803,9 +824,21 @@ class StatBoard:
 
         self.player1 = player1
         self.player1_pallet = self.images_numbers[0].get_rect(topleft=(28 * BLOCK_SIZE, 16 * BLOCK_SIZE))
+        self.player1_score = [
+            self.images_numbers[0].get_rect(topleft=(30 * BLOCK_SIZE, 15 * BLOCK_SIZE)),
+            self.images_numbers[0].get_rect(topleft=(31 * BLOCK_SIZE, 15 * BLOCK_SIZE)),
+            self.images_numbers[0].get_rect(topleft=(32 * BLOCK_SIZE, 15 * BLOCK_SIZE)),
+            self.images_numbers[0].get_rect(topleft=(33 * BLOCK_SIZE, 15 * BLOCK_SIZE)),
+        ]
 
         self.player2 = player2
         self.player2_pallet = self.images_numbers[0].get_rect(topleft=(28 * BLOCK_SIZE, 19 * BLOCK_SIZE))
+        self.player2_score = [
+            self.images_numbers[0].get_rect(topleft=(30 * BLOCK_SIZE, 18 * BLOCK_SIZE)),
+            self.images_numbers[0].get_rect(topleft=(31 * BLOCK_SIZE, 18 * BLOCK_SIZE)),
+            self.images_numbers[0].get_rect(topleft=(32 * BLOCK_SIZE, 18 * BLOCK_SIZE)),
+            self.images_numbers[0].get_rect(topleft=(33 * BLOCK_SIZE, 18 * BLOCK_SIZE)),
+        ]
 
         self.enemy_generator = enemy_generator
         self.enemy_pallet = self.images_enemy.get_rect()
@@ -822,12 +855,18 @@ class StatBoard:
         for e in range(self.enemy_generator.enemies_remaining):
             self.enemy_pallet.topleft = ((27 + e % 2) * BLOCK_SIZE, (1 + e // 2) * BLOCK_SIZE)
             SCREEN.blit(self.images_enemy, self.enemy_pallet)
+        #
+        points_1 = num_to_digits(sum(self.player1.points))
+        points_2 = num_to_digits(sum(self.player2.points))
+        for i in range(4):
+            SCREEN.blit(self.images_numbers[points_1[i]], self.player1_score[i])
+            SCREEN.blit(self.images_numbers[points_2[i]], self.player2_score[i])
 
 
 class EnemyGenerator:
     def __init__(self, game_area, all_sprites,
                  enemy_group, player_group,
-                 obstacle_group, ocean_group,
+                 obstacle_group, ocean_group, ice_group,
                  world_bullet_list, all_rewards,
                  spawn_order):
         self.spawn_locations = [
@@ -846,6 +885,7 @@ class EnemyGenerator:
         self.player_group = player_group
         self.obstacle_group = obstacle_group
         self.ocean_group = ocean_group
+        self.ice_group = ice_group
         self.bullet_list = world_bullet_list
         self.rewards = all_rewards
         #
@@ -873,6 +913,7 @@ class EnemyGenerator:
             enemy.bullet_exceptions.add(self.ocean_group)
             enemy.bullet_list = self.bullet_list
             enemy.rewards = self.rewards
+            enemy.ice_areas = self.ice_group
 
     def update(self):
         active_number = len(self.enemy_group)
@@ -909,6 +950,7 @@ class EnemyGenerator:
                 enemy.bullet_exceptions.add(self.ocean_group)
                 enemy.bullet_list = self.bullet_list
                 enemy.rewards = self.rewards
+                enemy.ice_areas = self.ice_group
                 #
                 self.enemies_remaining -= 1
                 self.respawn_counter = TIMERS['enemy_respawn_normal']
@@ -951,3 +993,7 @@ class StatusDisplay:
                 SCREEN.blit(self.text_second_images[i], self.second_pallet[i])
         else:
             SCREEN.blit(self.text_first_images[1], self.first_pallet)
+
+
+def num_to_digits(number):
+    return [int(dig) for dig in str(number).zfill(4)]
