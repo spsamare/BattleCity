@@ -107,6 +107,8 @@ class Tank(pg.sprite.Sprite):
             self.level_change(1)
         else:
             self.level = 0
+        #
+        self.is_boosted = False
 
     def update(self):
         if self.is_alive:
@@ -242,6 +244,10 @@ class Tank(pg.sprite.Sprite):
         self.immortal_timer = 5 * FPS
         self.immortal = True
         self.has_shield = False
+        if self.is_boosted:
+            self.level_change()
+            self.level_change()
+            self.level_change()
 
     def grant_reward(self, reward_name):
         self.points.append(POINTS['r0'])
@@ -253,7 +259,7 @@ class Tank(pg.sprite.Sprite):
             pg.mixer.Sound.play(sound_library['r_star'])
             self.level_change()
         elif reward_name == 'life':
-            self.lives += 1
+            self.lives = np.minimum(self.lives + 1, 9)
             pg.mixer.Sound.play(sound_library['r_life'])
         elif reward_name == 'freeze':
             pg.mixer.Sound.play(sound_library['r_fortify'])
@@ -289,6 +295,7 @@ class Enemy(Tank):
         #    self.start_countdown = TIMERS['enemy_spawn_delay']
         #    self.groups()[0].add(Shine(self, self.game_area))
         # print(self.level)
+        self.is_difficult = False
 
     def update(self):
         if self.is_alive:
@@ -334,7 +341,11 @@ class Enemy(Tank):
                                                    p=self.probability[np.minimum(self.inertia_state, 1)])
                 if mobility_choice[0] > 0:
                     if mobility_choice[0] == 2:  # change the current course
-                        self.direction = (self.direction + np.random.randint(1, 4)) % 4
+                        if self.is_difficult is True:
+                            p1 = .35 if 13 * BLOCK_SIZE < self.rect.left else .15
+                            self.direction = np.random.choice(4, 1, p=[.2, p1, .3, .5 - p1])[0]
+                        else:
+                            self.direction = (self.direction + np.random.randint(1, 4)) % 4
                         self.inertia_state = 10
                     else:
                         self.inertia_state = np.maximum(self.inertia_state - 1, 0)
@@ -815,7 +826,7 @@ class Round:
 
 
 class StatBoard:
-    def __init__(self, player1, player2, enemy_generator):
+    def __init__(self, player1, player2, enemy_generator, stage):
         self.images_stat_pallet = image_library[stat_pallet_sprite]
         self.stat_pallet = self.images_stat_pallet.get_rect(topleft=(27 * BLOCK_SIZE, 15 * BLOCK_SIZE))
 
@@ -843,6 +854,13 @@ class StatBoard:
         self.enemy_generator = enemy_generator
         self.enemy_pallet = self.images_enemy.get_rect()
 
+        self.stage = stage
+        self.stage_pallet = [
+            self.images_numbers[0].get_rect(topleft=(27 * BLOCK_SIZE, 23 * BLOCK_SIZE)),
+            self.images_numbers[0].get_rect(topleft=(28 * BLOCK_SIZE, 23 * BLOCK_SIZE)),
+            self.images_numbers[0].get_rect(topleft=(29 * BLOCK_SIZE, 23 * BLOCK_SIZE))
+        ]
+
     def update(self):
         pass
 
@@ -861,6 +879,10 @@ class StatBoard:
         for i in range(4):
             SCREEN.blit(self.images_numbers[points_1[i]], self.player1_score[i])
             SCREEN.blit(self.images_numbers[points_2[i]], self.player2_score[i])
+        #
+        stage_str = num_to_digits(self.stage + 1, 3)
+        for i in range(3):
+            SCREEN.blit(self.images_numbers[stage_str[i]], self.stage_pallet[i])
 
 
 class EnemyGenerator:
@@ -868,7 +890,7 @@ class EnemyGenerator:
                  enemy_group, player_group,
                  obstacle_group, ocean_group, ice_group,
                  world_bullet_list, all_rewards,
-                 spawn_order):
+                 spawn_order, is_difficult):
         self.spawn_locations = [
             (0 * BLOCK_SIZE, 0 * BLOCK_SIZE),
             (12 * BLOCK_SIZE, 0 * BLOCK_SIZE),
@@ -892,6 +914,8 @@ class EnemyGenerator:
         self.respawn_counter = TIMERS['enemy_respawn_normal']
         self.spawn_order = spawn_order
         #
+        self.is_difficult = is_difficult
+        #
         enemy1 = Enemy(pos=self.spawn_locations[0], game_area_=self.game_area,
                        level=0 if len(self.spawn_order) == 0 else self.spawn_order.pop(0))
         enemy2 = EnemySpecial(pos=self.spawn_locations[1], game_area_=self.game_area,
@@ -914,6 +938,7 @@ class EnemyGenerator:
             enemy.bullet_list = self.bullet_list
             enemy.rewards = self.rewards
             enemy.ice_areas = self.ice_group
+            enemy.is_difficult = self.is_difficult
 
     def update(self):
         active_number = len(self.enemy_group)
@@ -951,6 +976,7 @@ class EnemyGenerator:
                 enemy.bullet_list = self.bullet_list
                 enemy.rewards = self.rewards
                 enemy.ice_areas = self.ice_group
+                enemy.is_difficult = self.is_difficult
                 #
                 self.enemies_remaining -= 1
                 self.respawn_counter = TIMERS['enemy_respawn_normal']
@@ -962,7 +988,7 @@ class EnemyGenerator:
 class StatusDisplay:
     def __init__(self):
         self.text_first_images = image_library[display_first_start:display_second_start]
-        self.text_second_images = image_library[display_second_start:display_end]
+        self.text_second_images = image_library[display_second_start:display_third_start]
         self.num_images = image_library[stat_num_sprite_start:stat_num_sprite_end]
 
         self.back_pallet = pg.Rect((8 * BLOCK_SIZE, 12 * BLOCK_SIZE), (11 * BLOCK_SIZE, 3 * BLOCK_SIZE))
@@ -995,5 +1021,5 @@ class StatusDisplay:
             SCREEN.blit(self.text_first_images[1], self.first_pallet)
 
 
-def num_to_digits(number):
-    return [int(dig) for dig in str(number).zfill(4)]
+def num_to_digits(number, length=4):
+    return [int(dig) for dig in str(number).zfill(length)]

@@ -175,13 +175,20 @@ def load_sprites(block_size, resolution_scale, fullpath='res/tank_res_high.png',
     stat_num_sprite_end = stat_num_sprite_start + 10
 
     display_sprite_list = (
-        (656, 352, 80, 16), (576, 352, 80, 16), (576, 368, 80, 16),  # stage, pause, game
+        (656, 352, 80, 16), (0, 128, 128, 128), (576, 368, 80, 16),  # stage, pause, game
         (576, 384, 16, 16), (592, 384, 16, 16), (608, 384, 16, 16), (624, 384, 16, 16),  # o, v, e, r
-        (704, 400, 16, 16), (720, 400, 16, 16)  # o, k
+        (704, 400, 16, 16), (720, 400, 16, 16),  # o, k
+        (576, 416, 96, 16), (576, 432, 80, 16), (576, 400, 64, 16), (640, 400, 64, 16),  # player, enemy, eazy, hard
+        (704, 416, 16, 16), (720, 416, 16, 16), (688, 416, 16, 16),
+        (672, 416, 16, 16), (672, 432, 16, 16),  # +, -, tick, highlight, empty
+        (0, 384, 384, 128), (384, 448, 256, 64)
     )
     display_first_start = stat_num_sprite_end
     display_second_start = display_first_start + 3
-    display_end = display_second_start + 6
+    display_third_start = display_second_start + 6
+    display_fourth_start = display_third_start + 4
+    display_title = display_fourth_start + 5
+    display_end = display_title + 2
 
     all_sprite_list = sprite_rescale(
         player1_sprite_list +
@@ -224,7 +231,7 @@ def load_sprites(block_size, resolution_scale, fullpath='res/tank_res_high.png',
         reward_upgrade_sprite, reward_blast_sprite, reward_life_sprite, reward_empty_sprite, \
         stat_pallet_sprite, stat_enemy_sprite, \
         stat_num_sprite_start, stat_num_sprite_end, \
-        display_first_start, display_second_start, display_end
+        display_first_start, display_second_start, display_third_start, display_fourth_start, display_title, display_end
 
 
 def sprite_rescale(sprite_list, new_scale):

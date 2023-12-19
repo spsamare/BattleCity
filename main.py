@@ -1,6 +1,7 @@
 from objectClasses import *
-from init import *
+# from init import *
 from map_builder import MapBuilder
+from start_menu import *
 import numpy as np
 
 # Press the green button in the gutter to run the script.
@@ -10,12 +11,41 @@ if __name__ == '__main__':
     game_area_color = pg.Color('aquamarine2')
     clock = pg.time.Clock()
 
+    start_menu = StartMenu(max_stages=MAP_COUNT)
+    while not start_menu.done:
+        this_event = None
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                start_menu.done = True
+
+            if event.type == pg.KEYUP:
+                if event.key == pg.K_DELETE:  # exit
+                    start_menu.done = True
+                if event.key == pg.K_RIGHT:
+                    this_event = 'R'
+                if event.key == pg.K_LEFT:
+                    this_event = 'L'
+                if event.key == pg.K_RETURN:
+                    this_event = 'E'
+
+        start_menu.update(e=this_event)
+
+        SCREEN.fill(COLORS["background"])
+        start_menu.draw()
+        pg.display.flip()
+        clock.tick(FPS)
+
     done_game = False
     is_paused = False
-    stage_num = 0
+    stage_num = start_menu.stage - 1
+    is_difficult = start_menu.is_difficult
+    is_boosted = start_menu.is_boost
+    start_level = 3 if is_boosted else 0
+    start_lives = 9 if is_boosted else 3
+    #
     player_data = [
-        [3, 3],  # lives
-        [0, 0],  # level
+        [start_lives, start_lives],  # lives
+        [start_level, start_level],  # level
         [0, 0]  # points
     ]
 
@@ -90,7 +120,7 @@ if __name__ == '__main__':
                                          enemy_group, player_group,
                                          obstacle_group, ocean_group, ice_group,
                                          world_bullet_list, all_rewards,
-                                         enemy_order)
+                                         enemy_order, is_difficult)
 
         # update teams
         for player in player_group:
@@ -101,9 +131,11 @@ if __name__ == '__main__':
             player.bullet_list = world_bullet_list
             player.rewards = all_rewards
             player.ice_areas = ice_group
+            if is_boosted is True:
+                player.is_boosted = is_boosted
 
         temp_count = 0
-        stat_board = StatBoard(player1=agent1, player2=agent2, enemy_generator=enemy_generator)
+        stat_board = StatBoard(player1=agent1, player2=agent2, enemy_generator=enemy_generator, stage=stage_num)
         status_display = StatusDisplay()
         #
         # get all obstacle around the bird
